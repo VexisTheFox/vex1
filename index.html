@@ -4,11 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vex1 Meshtastic Node – Live Status</title>
+
   <style>
     body { margin:0; padding:0; background:#0a0a0a; color:#e0e0e0; font-family:Arial, sans-serif; }
     header { text-align:center; padding:30px 10px; background:#111; border-bottom:2px solid #1f1f1f; }
     h1 { margin:0; font-size:2.8rem; color:#4cff79; }
-    .node-img { width:220px; margin-top:20px; border-radius:12px; box-shadow:0 0 15px rgba(0,255,140,0.3); }
+
+    /* Updated from 220px → 330px */
+    .node-img { 
+      width:330px; 
+      margin-top:20px; 
+      border-radius:12px; 
+      box-shadow:0 0 15px rgba(0,255,140,0.3); 
+    }
+
     .container { max-width:900px; margin:40px auto; padding:20px; background:#141414; border-radius:14px; box-shadow:0 0 20px rgba(0,255,140,0.15); }
     .section-title { font-size:1.7rem; color:#4cff79; border-left:4px solid #4cff79; padding-left:10px; margin-bottom:15px; }
     .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -16,25 +25,105 @@
     .label { font-weight:bold; color:#68ff98; }
     .value { float:right; color:#eee; }
     footer { text-align:center; padding:30px; color:#777; margin-top:40px; }
+
+    /* ---------------------- */
+    /* SPECS SECTION STYLING  */
+    /* ---------------------- */
+
+    .spec-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 15px;
+    }
+
+    .spec-card {
+      background: #0f0f0f;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #242424;
+      transition: 0.15s ease;
+    }
+
+    .spec-card:hover {
+      border-color: #4cff79;
+      box-shadow: 0 0 10px rgba(76, 255, 121, 0.25);
+    }
+
+    .spec-label {
+      font-weight: bold;
+      color: #68ff98;
+      font-size: 1rem;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .spec-link {
+      color: #4cff79;
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+
+    .spec-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
+
 <body>
+
   <header>
     <h1>Vex1 Meshtastic Node</h1>
-    <img src="https://i.imgur.com/9O8YyWp.jpeg" alt="Node Image" class="node-img">
+    <img src="https://images.guns.lol/b776a4caeed397fc8779c20887f2dcf2fe2dc3b8/Wa5EU4.png" alt="Node Image" class="node-img">
   </header>
 
   <div class="container">
+
     <h2 class="section-title">Live Telemetry</h2>
     <div id="info" class="info-grid">Loading…</div>
 
     <h2 class="section-title" style="margin-top:35px;">Contact</h2>
     <div class="info-box">
-      <span class="label">Operator:</span> Vexi<br>
+      <span class="label">Operator:</span> Vexi123<br>
       <span class="label">TikTok:</span> @v3x1.tech<br>
+      <span class="label">Web:</span> vexi123.cn<br>
       <span class="label">Location:</span> Ostrava, Czech Republic
     </div>
-  </div>
+
+    <h2 class="section-title" style="margin-top:35px;">Node Hardware Specs</h2>
+
+    <div class="spec-grid">
+
+      <div class="spec-card">
+        <span class="spec-label">Board</span>
+        <a class="spec-link" href="https://www.aliexpress.com/item/1005007652899387.html?gatewayAdapt=usa2glo4itemAdapt" target="_blank">
+          Heltec V3 (ESP32 LoRa)
+        </a>
+      </div>
+
+      <div class="spec-card">
+        <span class="spec-label">Antenna</span>
+        <a class="spec-link" >
+          In kit
+        </a>
+      </div>
+
+      <div class="spec-card">
+        <span class="spec-label">Battery</span>
+        <a class="spec-link" href="https://www.aliexpress.com/item/1005009961316944.html" target="_blank">
+          1800mAh PS3 controller batt (buy a real one instead)
+        </a>
+      </div>
+
+      <div class="spec-card">
+        <span class="spec-label">Case</span>
+        <a class="spec-link" >
+          ESP32 shipping box
+        </a>
+      </div>
+    </div>
+
+  </div> <!-- end container -->
 
   <script>
     function fmtNum(x) {
@@ -56,30 +145,28 @@
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 60000);
 
-      const proxies = [
-        u => `https://cors.isomorphic-git.org/${u}`,
-        u => `https://corsproxy.io/?${u}`,
-        u => `https://thingproxy.freeboard.io/fetch/${u}`,
-        u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`
-      ];
+      const target = 'https://map.nikdocz1234.workers.dev/';
 
-      const target = 'https://map.czmesh.cz/api/v1/nodes';
       let res;
-
-      for (const p of proxies) {
-        try {
-          res = await fetch(p(target), { signal: controller.signal, cache:'no-store' });
-          if (res.ok) break;
-        } catch {}
+      try {
+        res = await fetch(target, { signal: controller.signal, cache: 'no-store' });
+      } catch (err) {
+        box.textContent = 'Request failed.';
+        return;
       }
 
-      if (!res || !res.ok) {
+      if (!res.ok) {
         box.textContent = 'Failed to load node data.';
         return;
       }
 
       let data;
-      try { data = await res.json(); } catch { box.textContent = 'Invalid JSON.'; return; }
+      try {
+        data = await res.json();
+      } catch {
+        box.textContent = 'Invalid JSON.';
+        return;
+      }
 
       let nodes = [];
       if (Array.isArray(data)) nodes = data;
@@ -87,7 +174,10 @@
       else if (Array.isArray(data.data)) nodes = data.data;
 
       const node = nodes.find(n => n?.short_name?.toLowerCase() === 'vex1');
-      if (!node) { box.textContent = 'Node vex1 not found.'; return; }
+      if (!node) {
+        box.textContent = 'Node vex1 not found.';
+        return;
+      }
 
       const fields = [
         ['Name', node.long_name],
@@ -122,5 +212,6 @@
   <footer>
     Vex1 Meshtastic Node • Live Mesh Telemetry
   </footer>
+
 </body>
 </html>
