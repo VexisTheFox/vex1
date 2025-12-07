@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vex1 Meshtastic Node – Live Status</title>
+  <style>
+    body { margin:0; padding:0; background:#0a0a0a; color:#e0e0e0; font-family:Arial, sans-serif; }
+    header { text-align:center; padding:30px 10px; background:#111; border-bottom:2px solid #1f1f1f; }
+    h1 { margin:0; font-size:2.8rem; color:#4cff79; }
+    .node-img { width:220px; margin-top:20px; border-radius:12px; box-shadow:0 0 15px rgba(0,255,140,0.3); }
+    .container { max-width:900px; margin:40px auto; padding:20px; background:#141414; border-radius:14px; box-shadow:0 0 20px rgba(0,255,140,0.15); }
+    .section-title { font-size:1.7rem; color:#4cff79; border-left:4px solid #4cff79; padding-left:10px; margin-bottom:15px; }
+    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .info-box { background:#0f0f0f; padding:12px; border-radius:10px; border:1px solid #242424; }
+    .label { font-weight:bold; color:#68ff98; }
+    .value { float:right; color:#eee; }
+    footer { text-align:center; padding:30px; color:#777; margin-top:40px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Vex1 Meshtastic Node</h1>
+    <img src="https://i.imgur.com/9O8YyWp.jpeg" alt="Node Image" class="node-img">
+  </header>
+
+  <div class="container">
+    <h2 class="section-title">Live Telemetry</h2>
+    <div id="info" class="info-grid">Loading…</div>
+
+    <h2 class="section-title" style="margin-top:35px;">Contact</h2>
+    <div class="info-box">
+      <span class="label">Operator:</span> Vexi<br>
+      <span class="label">TikTok:</span> @v3x1.tech<br>
+      <span class="label">Location:</span> Ostrava, Czech Republic
+    </div>
+  </div>
+
+  <script>
+    function fmtNum(x) {
+      if (!x) return x;
+      const n = Number(x);
+      return isNaN(n) ? x : n.toFixed(2);
+    }
+
+    function fmtDate(d) {
+      if (!d) return '';
+      const dt = new Date(d);
+      return dt.toLocaleString();
+    }
+
+    async function load() {
+      const box = document.getElementById('info');
+      box.textContent = 'Loading…';
+
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 60000);
+
+      const proxies = [
+        u => `https://cors.isomorphic-git.org/${u}`,
+        u => `https://corsproxy.io/?${u}`,
+        u => `https://thingproxy.freeboard.io/fetch/${u}`,
+        u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`
+      ];
+
+      const target = 'https://map.czmesh.cz/api/v1/nodes';
+      let res;
+
+      for (const p of proxies) {
+        try {
+          res = await fetch(p(target), { signal: controller.signal, cache:'no-store' });
+          if (res.ok) break;
+        } catch {}
+      }
+
+      if (!res || !res.ok) {
+        box.textContent = 'Failed to load node data.';
+        return;
+      }
+
+      let data;
+      try { data = await res.json(); } catch { box.textContent = 'Invalid JSON.'; return; }
+
+      let nodes = [];
+      if (Array.isArray(data)) nodes = data;
+      else if (Array.isArray(data.nodes)) nodes = data.nodes;
+      else if (Array.isArray(data.data)) nodes = data.data;
+
+      const node = nodes.find(n => n?.short_name?.toLowerCase() === 'vex1');
+      if (!node) { box.textContent = 'Node vex1 not found.'; return; }
+
+      const fields = [
+        ['Name', node.long_name],
+        ['Battery (%)', node.battery_level],
+        ['Voltage (V)', fmtNum(node.voltage)],
+        ['Channel Util (%)', fmtNum(node.channel_utilization)],
+        ['TX Util', fmtNum(node.air_util_tx)],
+        ['Uptime (s)', node.uptime_seconds],
+        ['Latitude', node.latitude],
+        ['Longitude', node.longitude],
+        ['Altitude (m)', node.altitude],
+        ['Updated', fmtDate(node.updated_at)],
+        ['Position Updated', fmtDate(node.position_updated_at)],
+        ['Firmware', node.firmware_version],
+        ['Node ID', node.node_id_hex || node.node_id],
+        ['Region', node.region_name || node.region],
+        ['Preset', node.modem_preset_name || node.modem_preset]
+      ];
+
+      let html = '';
+      for (const [label, value] of fields) {
+        if (value === undefined || value === null || value === '') continue;
+        html += `<div class='info-box'><span class='label'>${label}:</span> <span class='value'>${value}</span></div>`;
+      }
+
+      box.innerHTML = html;
+    }
+
+    load();
+  </script>
+
+  <footer>
+    Vex1 Meshtastic Node • Live Mesh Telemetry
+  </footer>
+</body>
+</html>
